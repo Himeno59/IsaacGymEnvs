@@ -1,0 +1,101 @@
+<mujoco model="ramiel">
+  <!-- wire route information: https://docs.google.com/spreadsheets/d/1JH6O1Cti2ruu0UfODRXxIDk2bSNNxsXqHrMXoRzE-mY/edit?usp=sharing -->
+  <option timestep="0.016" iterations="50" tolerance="1e-10" solver="Newton" jacobian="dense" cone="pyramidal"/>
+
+    <!-- set parameters that are same for different elements -->
+  <default>
+    <site size="0.005" rgba="1 1 1 1"/>
+    <default class="hinge_joint">
+      <joint type="hinge" limited="true" damping="3" frictionloss="1" range="-45 45"/>
+    </default>
+    <default class="slide_joint">
+      <joint type="slide" limited="true" damping="10" frictionloss="1" range="0.1 1.0"/>
+    </default>
+  </default>
+
+  <asset>
+    <!-- based on Mujoco sample models -->
+    <texture name="texplane" type="2d" builtin="checker" rgb1=".8 .8 .8" rgb2=".6 .6 .6" width="512" height="512" mark="cross" markrgb=".8 .8 .8"/>
+    <material name="matplane" reflectance="0.3" texture="texplane" texrepeat="1 1" texuniform="true"/>
+    <texture type="skybox" builtin="gradient" rgb1="0.3 0.3 1" rgb2="0 0 0" width="512" height="512"/>
+    <mesh name="main" file="./mesh/mujoco_model_main.STL" scale="1e-3 1e-3 1e-3"/>
+    <mesh name="leg" file="./mesh/mujoco_leg_1000mm.STL" scale="1e-3 1e-3 1e-3"/>
+    <hfield name="heightmap" file="./img/heightmap.png" size="2. 2. 0.1 1."/>  <!-- 3rd parameter adjusts max elevation of floor-->
+    <hfield name="maze" file="./img/maze.png" size="5. 5. 1. 1."/> <!-- created with https://neutralx0.net/tools/dot3/ -->
+  </asset>
+
+  <worldbody>
+    <geom name="floor" pos="0 0 0" euler="0 0 0" size="0 0 .25" type="plane" material="matplane" condim="3"/>
+      <!-- bumpy floor -->
+      <!-- <geom name="floor" type="hfield" hfield="heightmap" pos="0 0 -1.4"/> -->
+        <!-- maze -->
+        <!-- <geom name="floor" type="hfield" hfield="maze" pos="0 0 -2.2"/> -->
+        <light directional="true" pos="0 0 3" dir="0 0 -1" castshadow="false"/>
+
+        <body name="base" pos="0 0 1.0">
+          <!-- moment of inertia approximated with cylinder r = 0.25, h = 0.1-->
+          <inertial pos="0.00 0 0" mass="9.83" diaginertia="0.22 0.22 0.43"/>
+          <freejoint name="root"/>
+            <!-- movement can be constrain to 1D by setting type="slide" joint -->
+
+            <!-- adjust position of STL mesh to match that of mujoco model -->
+          <geom name="main" type="mesh" mesh="main" pos="-0.65 0.56 -0.04" euler="0 0 -90"/>
+            <!-- 20 cm distance from center to tip of "arm" -->
+          <geom type="cylinder" size="0.01" fromto="0 0 0 0.2 0 0" rgba="0 0 1 1"/>
+          <geom type="cylinder" size="0.01" fromto="0 0 0 -0.1 0.1732 0" rgba="0 0 1 1"/>
+          <geom type="cylinder" size="0.01" fromto="0 0 0 -0.1 -0.1732 0" rgba="0 0 1 1"/>
+
+            <!-- support legs for stability when landed -->
+            <!-- 15 cm height -->
+          <geom name="supportA" type = "cylinder" size="0.02 0.075" pos="-0.2 0 -0.115" rgba="0 0 1 1"/>
+          <geom name="supportB" type = "cylinder" size="0.02 0.075" pos="0.1 0.17 -0.115" rgba="0 0 1 1"/>
+          <geom name="supportC" type = "cylinder" size="0.02 0.075" pos="0.1 -0.17 -0.115" rgba="0 0 1 1"/>
+
+            <!-- indicate the direction of the robot even when the robot or view is rotated -->
+          <geom name="forward_marker" type="sphere" size="0.02" pos="0.3 0 0.05" rgba="1 0 0 1"/>
+
+          <site name="imu" pos="0 0 0"/>
+
+          <body name="pseudo1">
+            <joint name="roll" class="hinge_joint" axis="1 0 0"/>
+              <!-- moment of inertia for sphere of r = 0.01 -->
+            <inertial pos="0 0 0" mass="0.01" diaginertia="4e-7 4e-7 4e-7"/>
+              <!-- fake values -->
+            <body name="pseudo2">
+              <joint name="pitch" class="hinge_joint" axis="0 1 0"/>
+              <inertial pos="0 0 0" mass="0.01" diaginertia="4e-7 4e-7 4e-7"/>
+                <!-- fake values -->
+              <body name="pole">
+                <!-- length h = 1.0 -->
+                <inertial pos="0 0 -0.5" mass="0.50" diaginertia="0.074 0.074 7e-5"/>
+                <joint name="slide" class="slide_joint" axis="0 0 1"/>
+                  <!-- pole length 1.026 + 0.037 -->
+                <geom name="pole" type="cylinder" size="0.005" fromto="0 0 0. 0 0 -1.063" rgba="1 0 0 0.3"/>
+                <geom name="leg_mesh" type="mesh" mesh="leg" pos="0.011 -0.041 -1.07" euler="0 0 60" rgba="1 0 0 1"/>
+                <site name="top" pos="0 0 0"/>
+              </body>
+            </body>
+          </body>
+        </body>
+      </worldbody>
+
+      <actuator>
+        <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="roll" gear="50"/>
+        <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="pitch" gear="50"/>
+        <motor ctrllimited="true" ctrlrange="-1.0 0.28125" joint="slide" gear="320"/>
+      </actuator>
+
+      <!--
+        <contact>
+        <pair geom1="floor" geom2="leg_mesh" friction="0.3 0.3"/>
+        <pair geom1="floor" geom2="supportA"/>
+        <pair geom1="floor" geom2="supportB"/>
+        <pair geom1="floor" geom2="supportC"/>
+        <pair geom1="floor" geom2="main"/>
+        </contact>
+      -->
+        <equality>
+          <!-- uncomment this if you want fixed leg -->
+          <!-- <weld body1="fixed_body" body2="pole"/> -->
+        </equality>
+      </mujoco>
