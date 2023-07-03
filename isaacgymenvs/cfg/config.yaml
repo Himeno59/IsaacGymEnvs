@@ -38,7 +38,7 @@ test: False
 checkpoint: ''
 # set sigma when restoring network
 sigma: ''
-# set to True to use multi-gpu horovod training
+# set to True to use multi-gpu training
 multi_gpu: False
 
 wandb_activate: False
@@ -62,6 +62,7 @@ defaults:
   - task: Ant
   - train: ${task}PPO
   - hydra/job_logging: disabled
+  - pbt: no_pbt
 
 # set the directory where the output files get saved
 hydra:
