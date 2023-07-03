@@ -1,0 +1,34 @@
+<?xml version="1.0" ?>
+<robot name="vertical_plate">
+
+  <!-- Define the link -->
+  <link name="plate_link">
+    <visual>
+      <geometry>
+        <box size="0.2 0.4 0.01" /> <!-- Dimensions of the plate -->
+      </geometry>
+      <material name="blue">
+        <color rgba="0 0 1 1" /> <!-- Blue color for visualization -->
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <box size="0.2 0.4 0.01" />
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="1.0" /> <!-- Mass of the plate -->
+      <inertia ixx="0.01" ixy="0" ixz="0" iyy="0.01" iyz="0" izz="0.01" /> <!-- Inertia tensor -->
+    </inertial>
+  </link>
+
+  <!-- Define the joint -->
+  <joint name="plate_joint" type="prismatic">
+    <parent link="world" /> <!-- Attach the joint to the world link -->
+    <child link="plate_link" /> <!-- Attach the joint to the plate link -->
+    <axis xyz="0 0 1" /> <!-- Specify the axis of motion (in this case, along the z-axis) -->
+    <limit lower="-1.0" upper="1.0" /> <!-- Limit the motion within a range -->
+    <dynamics damping="0.1" friction="0.5" /> <!-- Joint dynamics -->
+  </joint>
+
+</robot>
