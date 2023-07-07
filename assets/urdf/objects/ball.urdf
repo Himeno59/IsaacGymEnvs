@@ -9,8 +9,8 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <sphere radius=".0375"/>
-          <!--<mesh filename="meshes/ball.obj"/>-->
+        <sphere radius="0.1"/>
+        <mesh filename="meshes/ball.obj"/>
       </geometry>
       <material name="Grey">
         <color rgba="0.65 0.65 0.65 1"/>
@@ -19,9 +19,15 @@
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <sphere radius=".0375"/>
-        <!--<mesh filename="meshes/ball.obj"/>-->
+        <sphere radius="0.1"/>
+        <mesh filename="meshes/ball.obj"/>
       </geometry>
+      <surface>
+	<contact>
+	  <kp>100000</kp>
+	  <kd>1</kd>
+	</contact>
+      </surface>
     </collision>
   </link>
 </robot>

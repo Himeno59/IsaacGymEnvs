@@ -1,0 +1,57 @@
+<?xml version="1.0"?>
+<robot name="board">
+
+  <link name="slider" >
+    <visual>
+      <origin xyz="-0.3 0 0"/>
+      <geometry>
+        <box size="0.01 0.01 8"/>
+      </geometry>
+      <material name="slider_mat">
+        <color rgba="0.3 0.5 0.7 1"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+          <box size="0.01 0.01 8"/>
+      </geometry>
+    </collision>
+   </link>
+   
+  <link name="board">
+    <visual>
+      <geometry>
+        <box size="3 3 0.1"/>
+	<mesh filename="meshes/board.obj"/>
+      </geometry>
+      <material name="board_mat">
+        <color rgba="0.3 0.5 0.7 1"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <box size="3 3 0.1"/>
+	<mesh filename="meshes/board.obj"/>
+      </geometry>
+      <surface>
+	<contact>
+	  <kp>100000</kp>
+	  <kd>1</kd>
+	</contact>
+      </surface>
+    </collision>
+    <inertial>
+      <mass value="1"/>
+      <inertia ixx="0.02" ixy="0" ixz="0" iyy="0.02" iyz="0" izz="0.02"/>
+    </inertial>
+  </link>
+
+  <joint name="slider_to_board" type="prismatic">
+    <parent link="slider"/>
+    <child link="board"/>
+    <axis xyz="0 0 1"/>
+    <origin xyz="0 0 0"/>
+    <limit effort="1000.0" lower="0" upper="2" velocity="10"/>
+  </joint>
+
+</robot>
