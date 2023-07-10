@@ -16,8 +16,6 @@ class Board_dribble(VecTask):
         # taskごとに設定する箇所
         self.reset_dist = self.cfg["env"]["resetDist"]
         self.max_push_effort = self.cfg["env"]["maxEffort"]
-        
-        self.success_count = 0
        
         # for object
         self.object_type = self.cfg["env"]["objectType"]
@@ -28,36 +26,45 @@ class Board_dribble(VecTask):
         if "asset" in self.cfg["env"]:
             self.asset_files_dict["ball"] = self.cfg["env"]["asset"].get("assetFileNameBall", self.asset_files_dict["ball"])
         
-        # board_pos(1) + board_vel(1) + ball_pos(3) + force(6) + time(1) + action(1)
-        # ballの状態は取得できる？
-        self.cfg["env"]["numObservations"] = 13
+        # board_pos(1) + board_vel(1) + ball_pos(3) (+ force(6) + time(1)) + action(1)
+        self.cfg["env"]["numObservations"] = 6
+        # self.cfg["env"]["numObservations"] = 13
         self.cfg["env"]["numActions"] = 1
 
         super().__init__(config=self.cfg, rl_device=rl_device, sim_device=sim_device, graphics_device_id=graphics_device_id, headless=headless, virtual_screen_capture=virtual_screen_capture, force_render=force_render)
 
         # get gym GPU state tensors
-        actor_root_state_tensor = self.gym.acquire_actor_root_state_tensor(self.sim)
+        # for robot
         dof_state_tensor = self.gym.acquire_dof_state_tensor(self.sim)
         sensor_tensor = self.gym.acquire_force_sensor_tensor(self.sim)
+        
+        # for object
+        actor_root_state_tensor = self.gym.acquire_actor_root_state_tensor(self.sim) 
+
+        # 剛体として計算するものに使ってるが、イマイチ何に必要かわからない
         rigid_body_tensor = self.gym.acquire_rigid_body_state_tensor(self.sim)
 
         self.gym.refresh_actor_root_state_tensor(self.sim)
         self.gym.refresh_dof_state_tensor(self.sim)
         self.gym.refresh_rigid_body_state_tensor(self.sim)
 
-        # self.hit_time_handle = self.gym.create_performance_timers(self.sim)
         
         # create some wrapper tensors for different slices
         self.dof_state = gymtorch.wrap_tensor(dof_state_tensor)
-        
+        self.root_state_tensor = gymtorch.wrap_tensor(actor_root_state_tensor).view(-1, 13)
+
+        # -1の所は他の引数から決まる = dofs of robot
+        # num_envs * dofs of robot * 2(pos,vel) = dof_state_tensorの要素数
         self.board_dof_state = self.dof_state.view(self.num_envs, -1, 2)[:, :self.num_board_dofs]
         self.board_dof_pos = self.dof_state.view(self.num_envs, self.num_board_dofs, 2)[..., 0]
         self.board_dof_vel = self.dof_state.view(self.num_envs, self.num_board_dofs, 2)[..., 1]
-        
+
         self.rigid_body_states = gymtorch.wrap_tensor(rigid_body_tensor).view(self.num_envs, -1, 13)
         self.num_bodies = self.rigid_body_states.shape[1]
+        
         self.num_dofs = self.gym.get_sim_dof_count(self.sim) // self.num_envs
-        self.root_state_tensor = gymtorch.wrap_tensor(actor_root_state_tensor).view(-1, 13)
+        print("Num dofs: ", self.num_dofs)
+        
 
     def create_sim(self):
         self.up_axis = self.cfg["sim"]["up_axis"] # z
@@ -108,7 +115,6 @@ class Board_dribble(VecTask):
         pose = gymapi.Transform()
         pose.p.z = 0.3
         
-
         # load object
         object_asset_options = gymapi.AssetOptions()
         object_asset = self.gym.load_asset(self.sim, asset_root, object_asset_file, object_asset_options)
@@ -170,14 +176,20 @@ class Board_dribble(VecTask):
         board_vel = self.obs_buf[:, 1]
         ball_pos = self.obs_buf[:, 2:5]
         force_value = self.obs_buf[:, 5:11]
-        success_count = self.success_count
+        sim_time = self.obs_buf[:, 11]
+        
+        pre_collision_time = 0.0
+        self.success_count = torch.zeros(self.num_envs).to(self.device)
 
         self.rew_buf[:], self.reset_buf[:], self.success_count = compute_board_dribble_reward(
             board_pos,
             board_vel,
             ball_pos,
+            force_value,
             actions,
-            success_count,
+            self.success_count,
+            sim_time,
+            pre_collision_time,
             self.reset_dist,
             self.reset_buf,
             self.progress_buf,
@@ -212,7 +224,9 @@ class Board_dribble(VecTask):
         
         self.obs_buf[:, 5:11] = gymtorch.wrap_tensor(sensor_tensor).view(self.num_envs, sensors_per_env * 6)
         
-        # print("force sensor value-----------",  self.obs_buf[:, 5:11])
+        print("force sensor value-----------",  self.obs_buf[:, 5:11])
+
+        self.obs_buf[:, 11] = self.gym.get_sim_time(self.sim) 
        
         return self.obs_buf
 
@@ -245,8 +259,13 @@ class Board_dribble(VecTask):
         forces = gymtorch.unwrap_tensor(actions_tensor)
         self.gym.set_dof_actuation_force_tensor(self.sim, forces)
 
-        print("hit time?", self.gym.get_sim_time(self.sim))
-        print("hit time?", self.gym.get_sim_time(self.sim))
+        # print("hit time?", self.gym.get_sim_time(self.sim))
+        # print("hit time?", self.gym.get_sim_time(self.sim))
+        print("dof_state_tensor----", self.dof_state)
+        print("board_dof_state----", self.board_dof_state)
+        print("num_dofs-----------" , self.num_dofs)
+        print("board_dof_pos----", self.board_dof_pos)
+        print("board_dof_vel----", self.board_dof_vel)
 
     def post_physics_step(self):
         self.progress_buf += 1
@@ -266,53 +285,77 @@ def compute_board_dribble_reward(
         board_pos,
         board_vel,
         ball_pos,
+        force_value,
         actions,
         success_count,
+        sim_time,
+        pre_collision_time,
         reset_dist,
         reset_buf,
         progress_buf,
         max_episode_length
 ):
-    # type: (Tensor, Tensor, Tensor, Tensor, int, float, Tensor, Tensor, float) -> Tuple[Tensor, Tensor, int]
+    # type: (Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, float, float, Tensor, Tensor, float) -> Tuple[Tensor, Tensor, Tensor]
 
     print("success_count", success_count)
-    board2ball_dist = ball_pos[0, 2] - board_pos
-    # board2ball_dist = ball_pos[0, 2]
-    #print("ball_pos[0, 2]", ball_pos[0, 2])
-    #print("board_pos", board_pos)
-    # action_cost = 0.5 * 1.0 * abs(board_vel)**2
-    # action_cost = 5 * abs(board_vel)**2 
-    #print("board-ball distance =", board2ball_dist)
-    #print("size", board2ball_dist.size())
+    board2ball_dist = ball_pos[0, 2] - board_pos 
 
     # energy penalty for movement
     print("actions", actions)
     action_cost = 0.3*torch.sum(actions ** 2, dim=-1)
+
+    # 連続で成功
     success_reward = torch.ones_like(action_cost)
+
+    # 衝突時間の間隔
+    if (board2ball_dist > 3).all().item():
+        print("collision")
     
     reward = board2ball_dist - action_cost + success_count * success_reward
     # reward = (board2ball_dist - action_cost)
     print("reward------", reward)
+    
 
     # adjust reward for reset agents
     # torch.where(condition, x, y) contidion = true -> x, condition = false -> y
     # reset_dist = 2.0
-
-    reward = torch.where(torch.abs(board2ball_dist) < reset_dist, torch.ones_like(reward) * -2.0, reward)
+    fz_value = force_value[:,2]
+    collision_time = torch.zeros(reward)
     
-    # reward = torch.where(torch.abs(board2ball_dist) > 2.0, reward, torch.zeros_like(reward))
-    if (board2ball_dist > 3).all().item():
-         success_count += 1
-    else:
-         success_count = 0
-         reward = -reward
+    idx = 0
+    # for f in fz_value:
+    #     if f > 0.0:
+    #         collision_time[idx] = sim_time
+    #     else:
+    #         collision_time[idx] = pre_collision_time[idx]
 
-    # reset
-    if success_count > 5:
-        reset = torch.ones_like(reset_buf)
-        success_count = 0
-    else:
-        reset = reset_buf
+    #     idx += 1
+        
+    # cycle_time = collision_time - pre_collision_time
+    
+        
+
+    reward = board2ball_dist - action_cost + success_count * success_reward 
+    
+    reward = torch.where(torch.abs(board2ball_dist) < reset_dist, torch.ones_like(reward) * -2.0, reward)
+
+    reset = reset_buf
+        
+    idx = 0
+    for dist in board2ball_dist:
+
+        if dist > reset_dist:
+            success_count[idx] += 1
+        else:
+            success_count[idx] = 0
+            reward[idx] = -reward[idx]
+
+        if success_count[idx] > 5:
+            reset[idx] = 1
+            success_count[idx] = 0
+
+        idx += 1
+
      
     reset = torch.where(progress_buf >= max_episode_length - 1, torch.ones_like(reset_buf), reset)
 
