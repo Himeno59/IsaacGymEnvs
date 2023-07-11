@@ -17,7 +17,7 @@ env:
   
   asset:
     assetRoot: "../../assets"
-    assetFileName: "urdf/board.urdf"
+    assetFileName: "urdf/arm.urdf"
     assetFileNameBall: "urdf/objects/ball.urdf" 
 
   # set to True if you use camera sensors in the environment

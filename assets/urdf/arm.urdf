@@ -1,0 +1,96 @@
+<?xml version="1.0"?>
+<robot name="arm">
+  
+  <link name="base_link"/>
+  
+  <joint name="joint1" type="revolute">
+   <axis xyz="0 1 0"/>
+   <origin xyz="0 0 0"/>
+   <parent link="base_link"/>
+   <child link="link1"/>
+   <limit lower="-1.0" upper="1.0" velocity="50" effort="200.0"/>
+  </joint>
+  <link name="link1">
+    <visual>
+      <geometry>
+        <box size="0.06 0.06 0.3"/>	
+      </geometry>
+      <origin xyz="0 0 0.15" rpy="0 0 0"/>
+      <material name="link1_mat">
+        <color rgba="0.1 0.1 0.3 1"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <box size="0.06 0.06 1.0"/>	
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="1"/>
+    </inertial>
+  </link>
+  
+  <joint name="joint2" type="revolute">
+    <axis xyz="0 1 0"/>
+    <origin xyz="0 0 0.3"/>
+    <parent link="link1"/>
+    <child link="link2"/>
+    <limit lower="-1.0" upper="1.0" velocity="50" effort="200.0"/>
+  </joint>
+  <link name="link2">
+    <visual>
+      <geometry>
+        <box size="0.06 0.06 0.3"/>	
+      </geometry>
+      <origin xyz="0 0 0.15"/>
+      <material name="link2_mat">
+        <color rgba="0.1 0.1 0.3 1"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <box size="0.06 0.06 1.0"/>	
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="1"/>
+    </inertial>
+  </link>
+
+  <joint name="joint3" type="revolute">
+    <axis xyz="0 1 0"/>
+    <origin xyz="0 0 0.3"/>
+    <parent link="link2"/>
+    <child link="hand"/>
+    <limit lower="-1.0" upper="1.0" velocity="50" effort="200.0"/>
+  </joint>  
+  <link name="hand">
+    <visual>
+      <geometry>
+        <box size="0.06 0.6 0.6"/>
+	<mesh filename="objects/meshes/hand.obj"/>
+      </geometry>
+      <origin xyz="0 0 0.3"/>
+      <material name="hand_mat">
+        <color rgba="0.3 0.5 0.7 1"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <box size="0.06 0.6 0.6"/>
+	<mesh filename="objects/meshes/hand.obj"/>
+      </geometry>
+      <surface>
+	<contact>
+	  <kp>100000</kp>
+	  <kd>1</kd>
+	</contact>
+      </surface>
+    </collision>
+    <inertial>
+      <mass value="1"/>
+      <inertia ixx="0.72" ixy="-0.036" ixz="-0.036" iyy="0.3636" iyz="-0.36" izz="0.3636"/>
+    </inertial>
+  </link>
+
+</robot>
