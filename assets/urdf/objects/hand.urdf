@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<robot name="hand">
+  <link name="hand">
+    <visual>
+      <geometry>
+        <box size="0.06 0.6 0.6"/>
+      </geometry>
+      <origin xyz="0 0 0.3"/>
+      <material name="hand_mat">
+        <color rgba="0.3 0.5 0.7 1"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <box size="0.06 0.6 0.6"/>
+      </geometry>
+      <surface>
+	<contact>
+	  <kp>100000</kp>
+	  <kd>1</kd>
+	</contact>
+      </surface>
+    </collision>
+    <inertial>
+      <mass value="1"/>
+      <inertia ixx="0.72" ixy="-0.036" ixz="-0.036" iyy="0.3636" iyz="-0.36" izz="0.3636"/>
+    </inertial>
+  </link>
+</robot>

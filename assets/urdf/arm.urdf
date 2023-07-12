@@ -20,13 +20,14 @@
         <color rgba="0.1 0.1 0.3 1"/>
       </material>
     </visual>
-    <collision>
-      <geometry>
-        <box size="0.06 0.06 1.0"/>	
-      </geometry>
-    </collision>
+    <!-- <collision> -->
+    <!--   <geometry> -->
+    <!--     <box size="0.06 0.06 0.3"/>	 -->
+    <!--   </geometry> -->
+    <!-- </collision> -->
     <inertial>
       <mass value="1"/>
+      <inertia ixx="0.72" ixy="-0.036" ixz="-0.036" iyy="0.3636" iyz="-0.36" izz="0.3636"/>
     </inertial>
   </link>
   
@@ -47,13 +48,14 @@
         <color rgba="0.1 0.1 0.3 1"/>
       </material>
     </visual>
-    <collision>
-      <geometry>
-        <box size="0.06 0.06 1.0"/>	
-      </geometry>
-    </collision>
+    <!-- <collision> -->
+    <!--   <geometry> -->
+    <!--     <box size="0.06 0.06 0.3"/>	 -->
+    <!--   </geometry> -->
+    <!-- </collision> -->
     <inertial>
       <mass value="1"/>
+      <inertia ixx="0.72" ixy="-0.036" ixz="-0.036" iyy="0.3636" iyz="-0.36" izz="0.3636"/>
     </inertial>
   </link>
 
@@ -67,17 +69,18 @@
   <link name="hand">
     <visual>
       <geometry>
-        <box size="0.06 0.6 0.6"/>
+        <box size="0.06 0.6 0.9"/>
 	<mesh filename="objects/meshes/hand.obj"/>
       </geometry>
-      <origin xyz="0 0 0.3"/>
+      <origin xyz="0 0 0.45"/>
       <material name="hand_mat">
         <color rgba="0.3 0.5 0.7 1"/>
       </material>
     </visual>
     <collision>
+      <origin xyz="0 0 0.45"/>
       <geometry>
-        <box size="0.06 0.6 0.6"/>
+        <box size="0.06 0.6 0.9"/>
 	<mesh filename="objects/meshes/hand.obj"/>
       </geometry>
       <surface>
