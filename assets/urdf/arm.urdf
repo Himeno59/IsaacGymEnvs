@@ -13,9 +13,9 @@
   <link name="link1">
     <visual>
       <geometry>
-        <box size="0.06 0.06 0.3"/>	
+        <box size="0.06 0.06 0.6"/>	
       </geometry>
-      <origin xyz="0 0 0.15" rpy="0 0 0"/>
+      <origin xyz="0 0 0.3" rpy="0 0 0"/>
       <material name="link1_mat">
         <color rgba="0.1 0.1 0.3 1"/>
       </material>
@@ -33,7 +33,7 @@
   
   <joint name="joint2" type="revolute">
     <axis xyz="0 1 0"/>
-    <origin xyz="0 0 0.3"/>
+    <origin xyz="0 0 0.6"/>
     <parent link="link1"/>
     <child link="link2"/>
     <limit lower="-1.0" upper="1.0" velocity="50" effort="200.0"/>
@@ -41,9 +41,9 @@
   <link name="link2">
     <visual>
       <geometry>
-        <box size="0.06 0.06 0.3"/>	
+        <box size="0.06 0.06 0.6"/>	
       </geometry>
-      <origin xyz="0 0 0.15"/>
+      <origin xyz="0 0 0.3"/>
       <material name="link2_mat">
         <color rgba="0.1 0.1 0.3 1"/>
       </material>
@@ -61,7 +61,7 @@
 
   <joint name="joint3" type="revolute">
     <axis xyz="0 1 0"/>
-    <origin xyz="0 0 0.3"/>
+    <origin xyz="0 0 0.6"/>
     <parent link="link2"/>
     <child link="hand"/>
     <limit lower="-1.0" upper="1.0" velocity="50" effort="200.0"/>
