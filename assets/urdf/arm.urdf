@@ -2,20 +2,19 @@
 <robot name="arm">
   
   <link name="base_link"/>
-  
   <joint name="joint1" type="revolute">
    <axis xyz="0 1 0"/>
    <origin xyz="0 0 0"/>
    <parent link="base_link"/>
    <child link="link1"/>
-   <limit lower="-1.0" upper="1.0" velocity="50" effort="200.0"/>
+   <limit lower="-0.75" upper="1.5" velocity="50" effort="200.0"/>
   </joint>
   <link name="link1">
     <visual>
       <geometry>
-        <box size="0.06 0.06 0.6"/>	
+        <box size="0.06 0.06 0.3"/>	
       </geometry>
-      <origin xyz="0 0 0.3" rpy="0 0 0"/>
+      <origin xyz="0 0 0.15" rpy="0 0 0"/>
       <material name="link1_mat">
         <color rgba="0.1 0.1 0.3 1"/>
       </material>
@@ -33,17 +32,17 @@
   
   <joint name="joint2" type="revolute">
     <axis xyz="0 1 0"/>
-    <origin xyz="0 0 0.6"/>
+    <origin xyz="0 0 0.3"/>
     <parent link="link1"/>
     <child link="link2"/>
-    <limit lower="-1.0" upper="1.0" velocity="50" effort="200.0"/>
+    <limit lower="-2.5" upper="0.0" velocity="50" effort="200.0"/>
   </joint>
   <link name="link2">
     <visual>
       <geometry>
-        <box size="0.06 0.06 0.6"/>	
+        <box size="0.06 0.06 0.3"/>	
       </geometry>
-      <origin xyz="0 0 0.3"/>
+      <origin xyz="0 0 0.15"/>
       <material name="link2_mat">
         <color rgba="0.1 0.1 0.3 1"/>
       </material>
@@ -61,26 +60,26 @@
 
   <joint name="joint3" type="revolute">
     <axis xyz="0 1 0"/>
-    <origin xyz="0 0 0.6"/>
+    <origin xyz="0 0 0.3"/>
     <parent link="link2"/>
     <child link="hand"/>
-    <limit lower="-1.0" upper="1.0" velocity="50" effort="200.0"/>
+    <limit lower="-0.75" upper="1.5" velocity="50" effort="200.0"/>
   </joint>  
   <link name="hand">
     <visual>
       <geometry>
-        <box size="0.06 0.6 0.9"/>
+        <box size="0.06 0.2 0.3"/>
 	<mesh filename="objects/meshes/hand.obj"/>
       </geometry>
-      <origin xyz="0 0 0.45"/>
+      <origin xyz="0 0 0.15"/>
       <material name="hand_mat">
         <color rgba="0.3 0.5 0.7 1"/>
       </material>
     </visual>
     <collision>
-      <origin xyz="0 0 0.45"/>
+      <origin xyz="0 0 0.15"/>
       <geometry>
-        <box size="0.06 0.6 0.9"/>
+        <box size="0.06 0.2 0.3"/>
 	<mesh filename="objects/meshes/hand.obj"/>
       </geometry>
       <surface>
