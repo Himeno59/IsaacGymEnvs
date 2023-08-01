@@ -31,13 +31,13 @@ class BasketballDribble(VecTask):
         if "asset" in self.cfg["env"]:
             self.asset_files_dict["basketball"] = self.cfg["env"]["asset"].get("assetFileNameBall", self.asset_files_dict["basketball"])
         
-        #   arm_dof_pos(3) + arm_dof_vel(3)
+        #   arm_dof_pos(7) + arm_dof_vel(7)
         # + ball_pos(3) + ball_rot(4) + ball_vel(3)
         # + force_sensor(6)
-        # + action(3)
-        # = 25
-        self.cfg["env"]["numObservations"] = 25
-        self.cfg["env"]["numActions"] = 3
+        # + action(7)
+        # = 37
+        self.cfg["env"]["numObservations"] = 37
+        self.cfg["env"]["numActions"] = 7
 
         super().__init__(config=self.cfg, rl_device=rl_device, sim_device=sim_device, graphics_device_id=graphics_device_id, headless=headless, virtual_screen_capture=virtual_screen_capture, force_render=force_render)
 
@@ -115,7 +115,8 @@ class BasketballDribble(VecTask):
         
         self.num_arm_bodies = self.gym.get_asset_rigid_body_count(arm_asset)
         self.num_arm_shapes = self.gym.get_asset_rigid_shape_count(arm_asset)
-        self.num_arm_dofs = self.gym.get_asset_dof_count(arm_asset) # 3
+        self.num_arm_dofs = self.gym.get_asset_dof_count(arm_asset) # 4
+        print("num_arm_dofs---", self.num_arm_dofs)
         
         # get board dof properties, loaded by Isaac Gym from URDF
         arm_dof_props = self.gym.get_asset_dof_properties(arm_asset)
@@ -138,9 +139,9 @@ class BasketballDribble(VecTask):
         # create force sensors attached to the top of surface
         sensor_attach_indices = [self.gym.find_asset_rigid_body_index(arm_asset, name) for name in sensor_attach_names] # assetファイルの中で何番目のrigid_bodyに取り付けるか -> indices = 3
         sensor_pose = gymapi.Transform()
-        # handの原点をjoin部分に設定しているので、z方向に0.15ずらす必要あり
+        # handの原点をjoin部分に設定しているので、z方向に0.2ずらす必要あり
         # todo: ここを手動で変えずにファイルから読み出せるようにする
-        sensor_pose.p.z = 0.15
+        sensor_pose.p.x = 0.15
         # 同じ物体に取り付けられたセンサにおいてforceは同じ値を示すが、torqueはセンサーのローカル座標系基準で測定される
         for body_idx in sensor_attach_indices:
             self.gym.create_asset_force_sensor(arm_asset, body_idx, sensor_pose)
@@ -148,7 +149,7 @@ class BasketballDribble(VecTask):
         # default start pose
         arm_start_pose = gymapi.Transform()
         arm_start_pose.p.z = 1.6
-        arm_start_pose.r = gymapi.Quat.from_axis_angle(gymapi.Vec3(0, 1, 0), 0.5 * np.pi) # y軸方向に90[degree]
+        # arm_start_pose.r = gymapi.Quat.from_axis_angle(gymapi.Vec3(0, 1, 0), 0.5 * np.pi) # y軸方向に90[degree]
         
         # load object
         object_asset_options = gymapi.AssetOptions()
@@ -159,14 +160,16 @@ class BasketballDribble(VecTask):
         # pos
         object_start_pose = gymapi.Transform()
         object_start_pose.p = gymapi.Vec3()
-        object_start_pose.p.x, object_start_pose.p.y = 0.7, 0
+        object_start_pose.p.x, object_start_pose.p.y = 0.45, -0.17
+        self.object_start_pos_x = object_start_pose.p.x
+        self.object_start_pos_y = object_start_pose.p.y
         # object_start_pose.p.z = arm_start_pose.p.z - 0.25 # - (radius + α)
-        object_start_pose.p.z = 1.2
+        object_start_pose.p.z = 0.8
         # vel
         object_start_vel = gymapi.Velocity()
         object_start_vel.linear = gymapi.Vec3()
         object_start_vel.linear.x, object_start_vel.linear.y = 0.0, 0.0
-        object_start_vel.linear.z = 0.0
+        object_start_vel.linear.z = 3.0
         
         # print("object_start_pose", object_start_pose)
 
@@ -236,6 +239,8 @@ class BasketballDribble(VecTask):
             sim_time,
             self.zero_vel_time,
             self.zero_vel_start_time,
+            self.object_start_pos_x,
+            self.object_start_pos_y,
             self.reset_buf,
             self.progress_buf,
             self.max_episode_length
@@ -262,19 +267,19 @@ class BasketballDribble(VecTask):
         self.object_vel = self.root_state_tensor[self.object_indices, 7:10]
 
         # set
-        self.obs_buf[:, 0:3] = self.arm_dof_pos[:, 0:3].squeeze()
-        self.obs_buf[:, 3:6] = self.arm_dof_vel[:, 0:3].squeeze()
-        self.obs_buf[:, 6:9] = self.object_pos[:, 0:3].squeeze()
-        self.obs_buf[:, 9:13] = self.object_rot[:, 0:4].squeeze()
-        self.obs_buf[:, 13:16] = self.object_vel[:, 0:3].squeeze()
-        self.obs_buf[:, 16:22] = force_sensor_tensor
-        self.obs_buf[:, 22:25] = self.actions
+        self.obs_buf[:, 0:7] = self.arm_dof_pos[:, 0:7].squeeze()
+        self.obs_buf[:, 7:14] = self.arm_dof_vel[:, 0:7].squeeze()
+        self.obs_buf[:, 14:17] = self.object_pos[:, 0:3].squeeze()
+        self.obs_buf[:, 17:21] = self.object_rot[:, 0:4].squeeze()
+        self.obs_buf[:, 21:24] = self.object_vel[:, 0:3].squeeze()
+        self.obs_buf[:, 24:30] = force_sensor_tensor
+        self.obs_buf[:, 30:37] = self.actions
 
         return self.obs_buf
 
     def reset_idx(self, env_ids):
         # reset arm pos/vel
-        joint_tensor = torch.tensor([1.0, -1.0, -0.4])
+        joint_tensor = torch.tensor([-0.1, -0.3, 0.1, 0, 0.3, -0.1, 0.07])
         arm_dof_pos = joint_tensor.repeat(len(env_ids), 1).to(self.device)
         arm_dof_vel = torch.zeros((len(env_ids), self.num_arm_dofs), device=self.device)
 
@@ -321,24 +326,28 @@ def compute_dribble_reward(
         sim_time,
         pre_zero_vel_time, # 1step前のself.zero_vel_time
         zero_vel_start_time,
+        object_start_pos_x,
+        object_start_pos_y,
         reset_buf,
         progress_buf,
         max_episode_length
 ):
-    # type: (Tensor, float, Tensor, Tensor, Tensor, Tensor, float) -> Tuple[Tensor, Tensor, Tensor, Tensor]
+    # type: (Tensor, float, Tensor, Tensor, float, float, Tensor, Tensor, float) -> Tuple[Tensor, Tensor, Tensor, Tensor]
 
-    # set value
-    arm_dof_pos = obs_buf[:, 0:3]
-    arm_dof_vel = obs_buf[:, 3:6]
-    ball_pos = obs_buf[:, 6:9]
-    ball_rot = obs_buf[:, 9:13]
-    ball_vel = obs_buf[:, 13:16]
-    force_sensor = obs_buf[:, 16:22]
-    actions = obs_buf[:, 22:25]
+    arm_dof_pos = obs_buf[:, 0:7]
+    arm_dof_vel = obs_buf[:, 7:14]
+    ball_pos = obs_buf[:, 14:17]
+    ball_rot = obs_buf[:, 17:21]
+    ball_vel = obs_buf[:, 21:24]
+    force_sensor = obs_buf[:, 24:30]
+    actions = obs_buf[:, 30:37]
 
     ball_x = ball_pos[:, 0]
     ball_y = ball_pos[:, 1]
     ball_z = ball_pos[:, 2]
+    ball_vx = ball_vel[:, 0]
+    ball_vy = ball_vel[:, 1]
+    ball_vz = ball_vel[:, 2]
 
     # reset timing
     # 速度は完全に0.0にはならないことに注意
@@ -346,48 +355,79 @@ def compute_dribble_reward(
     zero_vel_start_time = torch.where(zero_vel_start_time == 0.0, sim_time, zero_vel_start_time)
     zero_vel_start_time = torch.where(ball_vel[:, 2] < 1.0e-06, zero_vel_start_time, 0.0) # time or 0
     # print("zero_vel_start_time", zero_vel_start_time[1])
-    
-    # calc zero_vel_time
+
     zero_vel_time = sim_time - zero_vel_start_time
     zero_vel_time = torch.where(zero_vel_time == sim_time, 0.0, zero_vel_time) # time or 0
     # print("zero_vel_time", zero_vel_time[1])
 
-    # calc reward
-    # target_height = 1.5
-    target_height_reward =  2.25 - abs(2.25 - ball_z)**2
-    # 最初はz方向の速度を増やすことをメインのrewardにする
-    if sim_time < 1.0:
-        target_height_reward = torch.zeros_like(target_height_reward)
-    # print("target_height_reward---", target_height_reward)
-
-    # ballがhandより上にあることに対するpenalty
-    # hand部分の高さが必要
-    # ball_hand_dist = ball_z -
-
-    # z_vel reward
-    z_vel_reward = 2.0 * abs(ball_vel[:, 2])**2
+    ## reward
     
-    # x_vel penalty
-    x_vel_minus_reward = - abs(ball_vel[:, 0])**2
-    # print("x_vel_minus_reward---", x_vel_minus_reward)
+    # 位置に関する報酬
+    # [x,y]
+    x_init = object_start_pos_x
+    y_init = object_start_pos_y
+    # xy_pos_reward = 10.0 - ((ball_x - x_init)**2 + (ball_y - y_init)**2)
+    # print("xy_pos_reward---", xy_pos_reward[1])
+    
+    # [z]
+    # target_height = 1.2 # != z_init
+    # # v<0
+    # target_height_reward = 1.0 * (ball_z - target_height)**2
+    # target_height_reward = torch.where(ball_z > 1.2, -target_height_reward, target_height_reward)
+    # # v>0
+    # target_height_reward = torch.where(ball_vz > 0, -1.0*ball_z*(ball_z - 2*target_height), target_height_reward)
+    # # # もし1.4より高ければペナルティを与える
+    # target_height_reward = torch.where((ball_vz > 0) & (ball_z > 1.4), target_height_reward - 1.4, target_height_reward)
+    # print("target_height_reward---", target_height_reward[1])
+
+    # 時間微分
+    # [x,y]
+    xy_pos_reward = - 2 * ((ball_x - x_init)*ball_vx + (ball_y - y_init)*ball_vy)
+    # print("xy_pos_reward---", xy_pos_reward[1])
+    
+    # [z]
+    target_height = 1.2 # != z_init
+    # v<0
+    target_height_reward = 2.0 * (ball_z - target_height)*ball_vz
+    target_height_reward = torch.where(ball_z > 1.2, -target_height_reward, target_height_reward)
+    # v>0
+    target_height_reward = torch.where(ball_vz > 0, - ball_vz*(2*ball_z - 2*target_height), target_height_reward)
+    # もし1.4より高ければペナルティを与える
+    target_height_reward = torch.where(ball_z > 1.4, target_height_reward -1.4, target_height_reward)
+    # print("target_height_reward---", target_height_reward[1])
+   
+    # 速度に関する報酬
+    # # z_vel reward
+    # z_vel_reward = - 5.0 * ball_vz
+    # z_vel_reward = torch.where((ball_vz > 0) & (ball_z < 1.2), -z_vel_reward, z_vel_reward) # 
+    # print("z_vel_reward---", z_vel_reward[1])
+    
+    # # x_vel penalty
+    # x_vel_minus_reward = - 0.1 * abs(ball_vx)**2
+    # print("x_vel_minus_reward---", x_vel_minus_reward[1])
+
+    # # y_vel penalty
+    # y_vel_minus_reward = - 0.1 * abs(ball_vy)**2
+    # # # print("y_vel_minus_reward---", y_vel_minus_reward[1])
     
     # energy penalty for movement
-    action_cost = 0.1 * torch.sum(actions ** 2, dim=-1)
-    # print("action_cost---", action_cost)
+    action_cost = 0.3 * torch.sum(actions ** 2, dim=-1)
+    # print("action_cost---", action_cost[1])
    
-    # total reward
-    # total_reward = target_height_reward - action_cost + x_vel_minus_reward + z_vel_reward
-    total_reward = target_height_reward + x_vel_minus_reward + z_vel_reward
-    # print("total_reward---", total_reward)
+    # # total reward
+    total_reward = target_height_reward + xy_pos_reward - action_cost
+    # total_reward = z_vel_reward + xy_pos_reward - action_cost
+    # total_reward = target_height_reward + x_vel_minus_reward + y_vel_minus_reward - action_cost
+    # print("total_reward---", total_reward[1])
     
-    # torch.whereは１つ１つ比較する
-    reset = torch.where(abs(ball_x - 0.75) > 1.5, torch.ones_like(reset_buf), reset_buf) # x
-    reset = torch.where(torch.abs(zero_vel_time) > 0.75, torch.ones_like(reset_buf), reset)
+    # resetすることは一種の負のペナルティになるため、ここの条件を厳しくするのもあり
+    reset = torch.where((ball_x - x_init)**2 + (ball_y - y_init)**2 > 0.25, torch.ones_like(reset_buf), reset_buf) # [x,y] r<0.5
+    reset = torch.where(torch.abs(zero_vel_time) > 0.5, torch.ones_like(reset_buf), reset)
     reset = torch.where(progress_buf >= max_episode_length - 1, torch.ones_like(reset_buf), reset)
-
+    
     # reset zero_vel_time, zero_vel_start_time
-    zero_vel_start_time = torch.where(torch.abs(zero_vel_time) > 1.0, torch.zeros_like(zero_vel_start_time), zero_vel_start_time)
-    zero_vel_time = torch.where(torch.abs(zero_vel_time) > 1.0, torch.zeros_like(zero_vel_time), zero_vel_time)
+    zero_vel_start_time = torch.where(torch.abs(zero_vel_time) > 0.5, torch.zeros_like(zero_vel_start_time), zero_vel_start_time)
+    zero_vel_time = torch.where(torch.abs(zero_vel_time) > 0.5, torch.zeros_like(zero_vel_time), zero_vel_time)
     # print("zero_vel_start_time", zero_vel_start_time[1])
     # print("zero_vel_time", zero_vel_time[1])
 
