@@ -26,6 +26,7 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from .basketball_dribble import BasketballDribble
 from .board_dribble import Board_dribble
 from .ant import Ant
 from .ramiel import Ramiel
@@ -85,6 +86,8 @@ def resolve_allegro_kuka_two_arms(cfg, *args, **kwargs):
 
 # Mappings from strings to environments
 isaacgym_task_map = {
+    "BasketballDribble": BasketballDribble,
+    "Board_dribble": Board_dribble,  
     "AllegroHand": AllegroHand,
     "AllegroKuka": resolve_allegro_kuka,
     "AllegroKukaTwoArms": resolve_allegro_kuka_two_arms,
@@ -92,7 +95,6 @@ isaacgym_task_map = {
     "AllegroHandADR": AllegroHandDextremeADR,
     "Ant": Ant,
     "Ramiel": Ramiel,
-    "Board_dribble": Board_dribble,
     "Anymal": Anymal,
     "AnymalTerrain": AnymalTerrain,
     "BallBalance": BallBalance,
