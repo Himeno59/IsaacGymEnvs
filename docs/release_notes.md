@@ -1,6 +1,16 @@
 Release Notes
 =============
 
+1.5.1
+-----
+* Fix bug in IndustRealSim example - overwrite `generate_ctrl_signals`, `_set_dof_pos_target`, and `_set_dof_torque` in `industreal_base.py` to resolve `fingertip_midpoint` and `fingertip_centered` discrepancy
+
+1.5.0
+-----
+
+* Added [IndustReal](https://sites.google.com/nvidia.com/industreal) environments: IndustRealTaskPegsInsert and IndustRealTaskGearsInsert.
+* Updated hydra version to 1.2.
+
 1.4.0
 -----
 
